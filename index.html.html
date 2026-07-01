@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-width=1.0">
+    <title>การแจ้งเตือนของฉัน</title>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
+    
+    <style>
+        /* ตั้งค่าสีพื้นหลังและตัวอักษรให้ตรงกับธีมเดิม */
+        body {
+            background-color: #121A2F;
+            color: #FFFFFF;
+            font-family: 'Kanit', sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+        }
+
+        .container {
+            background-color: #1E2A44;
+            width: 100%;
+            max-width: 400px;
+            padding: 25px 20px;
+            border-radius: 16px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+            margin-top: 20px;
+        }
+
+        /* ส่วนหัวข้อ */
+        .header-title {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        
+        .header-title h3 {
+            margin: 0;
+            color: #FFB700;
+            font-weight: 500;
+            font-size: 22px;
+        }
+        
+        .header-title p {
+            margin: 5px 0 0 0;
+            font-size: 13px;
+            color: #8C9BB4;
+        }
+
+        /* การจัดฟอร์ม */
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        label {
+            display: block;
+            font-size: 14px;
+            color: #A3B1C6;
+            margin-bottom: 8px;
+        }
+
+        /* ตกแต่งกล่องข้อความทั่วไป */
+        input[type="text"],
+        input[type="number"],
+        input[type="time"],
+        select {
+            width: 100%;
+            padding: 14px;
+            border-radius: 10px;
+            border: 1px solid #2C3E5D;
+            background-color: #121A2F;
+            color: #FFFFFF;
+            font-family: 'Kanit', sans-serif;
+            font-size: 15px;
+            box-sizing: border-box;
+            transition: all 0.3s ease;
+        }
+
+        input:focus,
+        select:focus {
+            outline: none;
+            border-color: #FFB700;
+            box-shadow: 0 0 0 2px rgba(255, 183, 0, 0.2);
+        }
+
+        ::placeholder {
+            color: #5C6A82;
+        }
+
+        /* ปรับแต่ง Dropdown ให้มีลูกศรสีเหลืองสวยงาม */
+        select {
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23FFB700' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 15px center;
+            background-size: 16px;
+            padding-right: 40px;
+            cursor: pointer;
+        }
+
+        /* เปลี่ยนสีไอคอนนาฬิกาของ input type="time" ให้กลืนกับธีม */
+        input[type="time"]::-webkit-calendar-picker-indicator {
+            filter: invert(70%) sepia(80%) saturate(1000%) hue-rotate(350deg) brightness(110%) contrast(110%);
+            cursor: pointer;
+        }
+
+        /* ปุ่มบันทึก */
+        .btn-submit {
+            width: 100%;
+            padding: 15px;
+            background-color: #FFB700;
+            color: #121A2F;
+            border: none;
+            border-radius: 10px;
+            font-family: 'Kanit', sans-serif;
+            font-size: 16px;
+            font-weight: 600;
+            margin-top: 15px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .btn-submit:hover {
+            background-color: #E5A400;
+        }
+
+        /* ซ่อนส่วนที่ยังไม่ต้องแสดง */
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header-title">
+            <h3>🔔 ตั้งค่าการแจ้งเตือน</h3>
+            <p id="docNameDisplay">อ้างอิงเอกสาร: (กำลังโหลด...)</p>
+        </div>
+        
+        <form id="alertForm">
+            <input type="hidden" id="rowIdx" name="rowIdx">
+            <input type="hidden" id="userId" name="userId">
+            <input type="hidden" id="docName" name="docName">
+
+            <div class="form-group">
+                <label for="alertTopic">หัวข้อการแจ้งเตือน</label>
+                <select id="alertTopic" required>
+                    <option value="" disabled selected>-- เลือกหัวข้อ --</option>
+                    <option value="เตือนแจ้งรายงาน">📝 เตือนแจ้งรายงาน</option>
+                    <option value="อัพเดทรายงาน">🔄 อัพเดทรายงาน</option>
+                    <option value="ส่งเอกสาร">📤 ส่งเอกสาร</option>
+                    <option value="อื่นๆ">✨ อื่นๆ</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="frequencyType">รูปแบบความถี่</label>
+                <select id="frequencyType" onchange="toggleDateFields()" required>
+                    <option value="" disabled selected>-- เลือกความถี่ --</option>
+                    <option value="สัปดาห์">📅 รายสัปดาห์ (เลือกวัน)</option>
+                    <option value="ทุกเดือน">🗓️ ทุกเดือน (ระบุวันที่)</option>
+                    <option value="ทุก 3 เดือน"> quarterly ทุก 3 เดือน</option>
+                    <option value="ทุก 6 เดือน"> half-yearly ทุก 6 เดือน</option>
+                </select>
+            </div>
+
+            <div id="dayDiv" class="form-group hidden">
+                <label for="selectedDay">เลือกวัน</label>
+                <select id="selectedDay">
+                    <option value="จันทร์">วันจันทร์</option>
+                    <option value="อังคาร">วันอังคาร</option>
+                    <option value="พุธ">วันพุธ</option>
+                    <option value="พฤหัสบดี">วันพฤหัสบดี</option>
+                    <option value="ศุกร์">วันศุกร์</option>
+                    <option value="เสาร์">วันเสาร์</option>
+                    <option value="อาทิตย์">วันอาทิตย์</option>
+                </select>
+            </div>
+
+            <div id="dateDiv" class="form-group hidden">
+                <label for="selectedDate">ระบุวันที่ของเดือน (1-31)</label>
+                <select id="selectedDate">
+                    <option value="" disabled selected>-- เลือกวันที่ --</option>
+                    </select>
+            </div>
+
+            <div class="form-group">
+                <label for="selectedTime">เวลาที่ต้องการให้เตือน</label>
+                <input type="time" id="selectedTime" required>
+            </div>
+
+            <button type="submit" class="btn-submit">บันทึกการตั้งค่า</button>
+        </form>
+    </div>
+
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <script>
+        // สร้างตัวเลือกวันที่ 1-31 อัตโนมัติ
+        function populateDates() {
+            const dateSelect = document.getElementById("selectedDate");
+            for (let i = 1; i <= 31; i++) {
+                let option = document.createElement("option");
+                option.value = i;
+                option.text = "วันที่ " + i;
+                dateSelect.appendChild(option);
+            }
+        }
+
+        // ฟังก์ชันสลับการแสดงผล วัน/วันที่ ตามความถี่ที่เลือก
+        function toggleDateFields() {
+            const freq = document.getElementById("frequencyType").value;
+            const dayDiv = document.getElementById("dayDiv");
+            const dateDiv = document.getElementById("dateDiv");
+
+            if (freq === "สัปดาห์") {
+                dayDiv.classList.remove("hidden");
+                dateDiv.classList.add("hidden");
+                document.getElementById("selectedDate").value = ""; // เคลียร์ค่าเดิม
+            } else if (freq === "ทุกเดือน" || freq === "ทุก 3 เดือน" || freq === "ทุก 6 เดือน") {
+                dayDiv.classList.add("hidden");
+                dateDiv.classList.remove("hidden");
+                document.getElementById("selectedDay").value = "จันทร์"; // เคลียร์ค่าเดิม
+            } else {
+                dayDiv.classList.add("hidden");
+                dateDiv.classList.add("hidden");
+            }
+        }
+
+        // โหลดข้อมูลเมื่อเปิดหน้าเว็บ
+        window.onload = function() {
+            populateDates(); // เรียกสร้างตัวเลือกวันที่
+
+            // จำลองการรับค่าจาก URL Parameter (เช่น ?docName=ใบขับขี่&rowIdx=2)
+            const urlParams = new URLSearchParams(window.location.search);
+            const docNameParam = urlParams.get('docName');
+            const rowIdxParam = urlParams.get('rowIdx');
+            
+            if (docNameParam) {
+                document.getElementById('docNameDisplay').innerText = "อ้างอิงเอกสาร: " + docNameParam;
+                document.getElementById('docName').value = docNameParam;
+                document.getElementById('rowIdx').value = rowIdxParam;
+            }
+        };
+
+        // จัดการเมื่อกดปุ่มบันทึก
+        document.getElementById("alertForm").addEventListener("submit", function(e) {
+            e.preventDefault();
+            
+            // เปลี่ยนปุ่มเป็นสถานะกำลังโหลด
+            const btn = document.querySelector(".btn-submit");
+            const originalText = btn.innerText;
+            btn.innerText = "กำลังบันทึก...";
+            btn.disabled = true;
+            btn.style.backgroundColor = "#5C6A82";
+
+            // รวบรวมข้อมูล
+            const payload = {
+                action: 'saveAlertSchedule',
+                data: {
+                    rowIdx: document.getElementById("rowIdx").value,
+                    userId: document.getElementById("userId").value, // จะดึงผ่าน liff.getProfile() ได้เมื่อเชื่อมต่อเต็มรูปแบบ
+                    docName: document.getElementById("docName").value,
+                    alertTopic: document.getElementById("alertTopic").value,
+                    frequencyType: document.getElementById("frequencyType").value,
+                    selectedDay: document.getElementById("selectedDay").value,
+                    selectedDate: document.getElementById("selectedDate").value,
+                    selectedTime: document.getElementById("selectedTime").value
+                }
+            };
+
+            // เตรียมส่ง API ไปยัง Apps Script ของคุณ
+            const appsScriptUrl = 'ใส่_URL_WEBAPP_ของคุณที่นี่'; 
+            
+            fetch(appsScriptUrl, {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if(result.status === "success") {
+                    alert("บันทึกการตั้งค่าเรียบร้อยแล้วค่ะ");
+                    // ปิดหน้าต่าง LIFF หลังจากบันทึกเสร็จ
+                    if (liff.isInClient()) {
+                        liff.closeWindow();
+                    }
+                }
+            })
+            .catch(error => {
+                console.error("Error:", error);
+                alert("เกิดข้อผิดพลาดในการบันทึก กรุณาลองใหม่อีกครั้ง");
+                btn.innerText = originalText;
+                btn.disabled = false;
+                btn.style.backgroundColor = "#FFB700";
+            });
+        });
+    </script>
+</body>
+</html>
