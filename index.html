@@ -139,7 +139,11 @@
     <div class="container">
         <div class="header-title">
             <h3>🔔 ตั้งค่าการแจ้งเตือน</h3>
-            <p id="docNameDisplay">อ้างอิงเอกสาร: (กำลังโหลด...)</p>
+            <label for="docSelect">เลือกเอกสารในระบบ</label>
+            <select id="docSelect" onchange="onSelectDocument()" required>
+              <option value="" disabled selected>กำลังโหลดเอกสาร...</option>
+            </select>
+            <p id="docNameDisplay">กรุณาเลือกเอกสารที่ต้องการตั้งค่าแจ้งเตือน</p>
         </div>
         
         <form id="alertForm">
@@ -238,40 +242,69 @@
           }
         
           window.onload = function() {
-            populateDates();
-        
-            const urlParams = new URLSearchParams(window.location.search);
-            currentRowIdx = urlParams.get("rowIdx") || "";
-        
-            document.getElementById("rowIdx").value = currentRowIdx;
-        
-            liff.init({ liffId: MY_LIFF_ID })
-              .then(() => {
-                if (!liff.isLoggedIn()) {
-                  liff.login();
-                  return;
-                }
-        
-                return liff.getProfile();
-              })
-              .then(profile => {
-                if (!profile) return;
-        
-                currentUserId = profile.userId;
-                document.getElementById("userId").value = currentUserId;
-        
-                if (!currentRowIdx) {
-                  document.getElementById("docNameDisplay").innerText = "ไม่พบเอกสารอ้างอิง กรุณาเปิดจากหน้าเอกสารของฉัน";
-                  return;
-                }
-        
-                loadDocumentFromSystem(currentRowIdx, currentUserId);
-              })
-              .catch(err => {
-                console.error(err);
-                alert("เปิดหน้าแจ้งเตือนไม่สำเร็จ กรุณาเปิดผ่าน LINE LIFF อีกครั้ง");
-              });
-          };
+              populateDates();
+            
+              liff.init({ liffId: MY_LIFF_ID })
+                .then(() => {
+                  if (!liff.isLoggedIn()) {
+                    liff.login({ redirectUri: window.location.href });
+                    return Promise.reject("LOGIN_REDIRECT");
+                  }
+                  return liff.getProfile();
+                })
+                .then(profile => {
+                  currentUserId = profile.userId;
+                  document.getElementById("userId").value = currentUserId;
+                  loadMyDocuments(currentUserId);
+                })
+                .catch(err => {
+                  if (err === "LOGIN_REDIRECT") return;
+                  alert("LIFF Error:\n\n" + (err.message || JSON.stringify(err)));
+                });
+            };
+
+          function loadMyDocuments(userId) {
+              const url = `${appsScriptUrl}?action=getDashboard&userId=${encodeURIComponent(userId)}`;
+            
+              fetch(url)
+                .then(res => res.json())
+                .then(data => {
+                  const docs = data.docs || [];
+                  const select = document.getElementById("docSelect");
+            
+                  if (docs.length === 0) {
+                    select.innerHTML = `<option value="">ไม่พบเอกสารในระบบ</option>`;
+                    document.getElementById("docNameDisplay").innerText = "ยังไม่มีเอกสารที่ผูกกับบัญชี LINE นี้";
+                    return;
+                  }
+            
+                  select.innerHTML = `<option value="" disabled selected>-- เลือกเอกสาร --</option>`;
+            
+                  docs.forEach(doc => {
+                    const opt = document.createElement("option");
+                    opt.value = doc.rowIdx;
+                    opt.dataset.docName = doc.docName || "";
+                    opt.dataset.alertDays = doc.alertDays || "";
+                    opt.dataset.endDate = doc.endDate || "";
+                    opt.textContent = `${doc.docName} | หมดอายุ ${doc.endDate} | เตือนก่อน ${doc.alertDays || "-"} วัน`;
+                    select.appendChild(opt);
+                  });
+                })
+                .catch(err => {
+                  console.error(err);
+                  document.getElementById("docSelect").innerHTML = `<option value="">โหลดเอกสารไม่สำเร็จ</option>`;
+                });
+            }
+          function onSelectDocument() {
+              const select = document.getElementById("docSelect");
+              const opt = select.options[select.selectedIndex];
+            
+              document.getElementById("rowIdx").value = opt.value;
+              document.getElementById("docName").value = opt.dataset.docName || "";
+            
+              document.getElementById("docNameDisplay").innerText =
+                `อ้างอิงเอกสาร: ${opt.dataset.docName} | แจ้งเตือนก่อนหมดอายุ ${opt.dataset.alertDays || "-"} วัน`;
+            }  
         
           function loadDocumentFromSystem(rowIdx, userId) {
             const url = `${appsScriptUrl}?action=getDocByRow&rowIdx=${encodeURIComponent(rowIdx)}&userId=${encodeURIComponent(userId)}`;
