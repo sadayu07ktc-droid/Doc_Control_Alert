@@ -197,107 +197,166 @@
             <button type="submit" class="btn-submit">บันทึกการตั้งค่า</button>
         </form>
     </div>
-
+    
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-    <script>
-        // สร้างตัวเลือกวันที่ 1-31 อัตโนมัติ
-        function populateDates() {
+        <script>
+          const MY_LIFF_ID = "2010379470-vQxXyuA8";
+          const appsScriptUrl = "https://script.google.com/macros/s/AKfycbxkHcKCsM853RD225LZ7wUnxnBZF1D5HoEXnJm7FaLBY8h12oppFDkYmERoQwoTs9cf6w/exec";
+        
+          let currentUserId = "";
+          let currentRowIdx = "";
+        
+          function populateDates() {
             const dateSelect = document.getElementById("selectedDate");
+            dateSelect.innerHTML = '<option value="" disabled selected>-- เลือกวันที่ --</option>';
+        
             for (let i = 1; i <= 31; i++) {
-                let option = document.createElement("option");
-                option.value = i;
-                option.text = "วันที่ " + i;
-                dateSelect.appendChild(option);
+              let option = document.createElement("option");
+              option.value = i;
+              option.text = "วันที่ " + i;
+              dateSelect.appendChild(option);
             }
-        }
-
-        // ฟังก์ชันสลับการแสดงผล วัน/วันที่ ตามความถี่ที่เลือก
-        function toggleDateFields() {
+          }
+        
+          function toggleDateFields() {
             const freq = document.getElementById("frequencyType").value;
             const dayDiv = document.getElementById("dayDiv");
             const dateDiv = document.getElementById("dateDiv");
-
+        
             if (freq === "สัปดาห์") {
-                dayDiv.classList.remove("hidden");
-                dateDiv.classList.add("hidden");
-                document.getElementById("selectedDate").value = ""; // เคลียร์ค่าเดิม
+              dayDiv.classList.remove("hidden");
+              dateDiv.classList.add("hidden");
+              document.getElementById("selectedDate").value = "";
             } else if (freq === "ทุกเดือน" || freq === "ทุก 3 เดือน" || freq === "ทุก 6 เดือน") {
-                dayDiv.classList.add("hidden");
-                dateDiv.classList.remove("hidden");
-                document.getElementById("selectedDay").value = "จันทร์"; // เคลียร์ค่าเดิม
+              dayDiv.classList.add("hidden");
+              dateDiv.classList.remove("hidden");
+              document.getElementById("selectedDay").value = "จันทร์";
             } else {
-                dayDiv.classList.add("hidden");
-                dateDiv.classList.add("hidden");
+              dayDiv.classList.add("hidden");
+              dateDiv.classList.add("hidden");
             }
-        }
-
-        // โหลดข้อมูลเมื่อเปิดหน้าเว็บ
-        window.onload = function() {
-            populateDates(); // เรียกสร้างตัวเลือกวันที่
-
-            // จำลองการรับค่าจาก URL Parameter (เช่น ?docName=ใบขับขี่&rowIdx=2)
+          }
+        
+          window.onload = function() {
+            populateDates();
+        
             const urlParams = new URLSearchParams(window.location.search);
-            const docNameParam = urlParams.get('docName');
-            const rowIdxParam = urlParams.get('rowIdx');
-            
-            if (docNameParam) {
-                document.getElementById('docNameDisplay').innerText = "อ้างอิงเอกสาร: " + docNameParam;
-                document.getElementById('docName').value = docNameParam;
-                document.getElementById('rowIdx').value = rowIdxParam;
-            }
-        };
-
-        // จัดการเมื่อกดปุ่มบันทึก
-        document.getElementById("alertForm").addEventListener("submit", function(e) {
+            currentRowIdx = urlParams.get("rowIdx") || "";
+        
+            document.getElementById("rowIdx").value = currentRowIdx;
+        
+            liff.init({ liffId: MY_LIFF_ID })
+              .then(() => {
+                if (!liff.isLoggedIn()) {
+                  liff.login();
+                  return;
+                }
+        
+                return liff.getProfile();
+              })
+              .then(profile => {
+                if (!profile) return;
+        
+                currentUserId = profile.userId;
+                document.getElementById("userId").value = currentUserId;
+        
+                if (!currentRowIdx) {
+                  document.getElementById("docNameDisplay").innerText = "ไม่พบเอกสารอ้างอิง กรุณาเปิดจากหน้าเอกสารของฉัน";
+                  return;
+                }
+        
+                loadDocumentFromSystem(currentRowIdx, currentUserId);
+              })
+              .catch(err => {
+                console.error(err);
+                alert("เปิดหน้าแจ้งเตือนไม่สำเร็จ กรุณาเปิดผ่าน LINE LIFF อีกครั้ง");
+              });
+          };
+        
+          function loadDocumentFromSystem(rowIdx, userId) {
+            const url = `${appsScriptUrl}?action=getDocByRow&rowIdx=${encodeURIComponent(rowIdx)}&userId=${encodeURIComponent(userId)}`;
+        
+            fetch(url)
+              .then(res => res.json())
+              .then(doc => {
+                if (doc.status !== "success") {
+                  document.getElementById("docNameDisplay").innerText = doc.message || "ไม่พบข้อมูลเอกสาร";
+                  return;
+                }
+        
+                document.getElementById("docNameDisplay").innerText =
+                  `อ้างอิงเอกสาร: ${doc.docName} | แจ้งเตือนก่อนหมดอายุ ${doc.alertDays || "-"} วัน`;
+        
+                document.getElementById("docName").value = doc.docName || "";
+                document.getElementById("rowIdx").value = doc.rowIdx || "";
+                document.getElementById("userId").value = currentUserId;
+              })
+              .catch(err => {
+                console.error(err);
+                document.getElementById("docNameDisplay").innerText = "ดึงข้อมูลเอกสารไม่สำเร็จ";
+              });
+          }
+        
+          document.getElementById("alertForm").addEventListener("submit", function(e) {
             e.preventDefault();
-            
-            // เปลี่ยนปุ่มเป็นสถานะกำลังโหลด
+        
+            const rowIdx = document.getElementById("rowIdx").value;
+            const userId = document.getElementById("userId").value;
+            const docName = document.getElementById("docName").value;
+        
+            if (!rowIdx || !userId || !docName) {
+              alert("ข้อมูลเอกสารไม่ครบ กรุณากลับไปเปิดจากหน้าเอกสารของฉันอีกครั้ง");
+              return;
+            }
+        
             const btn = document.querySelector(".btn-submit");
             const originalText = btn.innerText;
             btn.innerText = "กำลังบันทึก...";
             btn.disabled = true;
             btn.style.backgroundColor = "#5C6A82";
-
-            // รวบรวมข้อมูล
+        
             const payload = {
-                action: 'saveAlertSchedule',
-                data: {
-                    rowIdx: document.getElementById("rowIdx").value,
-                    userId: document.getElementById("userId").value, // จะดึงผ่าน liff.getProfile() ได้เมื่อเชื่อมต่อเต็มรูปแบบ
-                    docName: document.getElementById("docName").value,
-                    alertTopic: document.getElementById("alertTopic").value,
-                    frequencyType: document.getElementById("frequencyType").value,
-                    selectedDay: document.getElementById("selectedDay").value,
-                    selectedDate: document.getElementById("selectedDate").value,
-                    selectedTime: document.getElementById("selectedTime").value
-                }
+              action: "saveAlertSchedule",
+              data: {
+                rowIdx: rowIdx,
+                userId: userId,
+                docName: docName,
+                alertTopic: document.getElementById("alertTopic").value,
+                frequencyType: document.getElementById("frequencyType").value,
+                selectedDay: document.getElementById("selectedDay").value,
+                selectedDate: document.getElementById("selectedDate").value,
+                selectedTime: document.getElementById("selectedTime").value || "09:00"
+              }
             };
-
-            // เตรียมส่ง API ไปยัง Apps Script ของคุณ
-            const appsScriptUrl = 'https://script.google.com/macros/s/AKfycbxkHcKCsM853RD225LZ7wUnxnBZF1D5HoEXnJm7FaLBY8h12oppFDkYmERoQwoTs9cf6w/exec'; 
-            
+        
             fetch(appsScriptUrl, {
-                method: 'POST',
-                body: JSON.stringify(payload)
+              method: "POST",
+              headers: {
+                "Content-Type": "text/plain;charset=utf-8"
+              },
+              body: JSON.stringify(payload)
             })
             .then(response => response.json())
             .then(result => {
-                if(result.status === "success") {
-                    alert("บันทึกการตั้งค่าเรียบร้อยแล้วค่ะ");
-                    // ปิดหน้าต่าง LIFF หลังจากบันทึกเสร็จ
-                    if (liff.isInClient()) {
-                        liff.closeWindow();
-                    }
+              if (result.status === "success") {
+                alert("บันทึกการตั้งค่าเรียบร้อยแล้วค่ะ");
+        
+                if (liff.isInClient()) {
+                  liff.closeWindow();
                 }
+              } else {
+                throw new Error(result.message || "บันทึกไม่สำเร็จ");
+              }
             })
             .catch(error => {
-                console.error("Error:", error);
-                alert("เกิดข้อผิดพลาดในการบันทึก กรุณาลองใหม่อีกครั้ง");
-                btn.innerText = originalText;
-                btn.disabled = false;
-                btn.style.backgroundColor = "#FFB700";
+              console.error("Error:", error);
+              alert("เกิดข้อผิดพลาดในการบันทึก กรุณาลองใหม่อีกครั้ง");
+        
+              btn.innerText = originalText;
+              btn.disabled = false;
+              btn.style.backgroundColor = "#FFB700";
             });
-        });
-    </script>
+          });
+        </script>
 </body>
 </html>
