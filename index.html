@@ -356,8 +356,12 @@
                 docName: docName,
                 alertTopic: document.getElementById("alertTopic").value,
                 frequencyType: document.getElementById("frequencyType").value,
-                selectedDay: document.getElementById("selectedDay").value,
-                selectedDate: document.getElementById("selectedDate").value,
+                selectedDay: document.getElementById("frequencyType").value === "สัปดาห์"
+                  ? document.getElementById("selectedDay").value
+                  : "",
+                selectedDate: document.getElementById("frequencyType").value !== "สัปดาห์"
+                  ? document.getElementById("selectedDate").value
+                  : "",
                 selectedTime: document.getElementById("selectedTime").value || "09:00"
               }
             };
