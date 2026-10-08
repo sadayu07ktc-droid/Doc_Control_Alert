@@ -133,6 +133,7 @@
             display: none;
         }
     </style>
+  <script src="https://sadayu07ktc-droid.github.io/SSB-SMART-SUPPLY-DASHBOARD/ssb-ui.js?v=20261008i"></script>
 </head>
 <body>
 
@@ -259,7 +260,7 @@
                 })
                 .catch(err => {
                   if (err === "LOGIN_REDIRECT") return;
-                  alert("LIFF Error:\n\n" + (err.message || JSON.stringify(err)));
+                  ssbAlert("LIFF Error:\n\n" + (err.message || JSON.stringify(err)));
                 });
             };
 
@@ -338,7 +339,7 @@
             const docName = document.getElementById("docName").value;
         
             if (!rowIdx || !userId || !docName) {
-              alert("ข้อมูลเอกสารไม่ครบ กรุณากลับไปเปิดจากหน้าเอกสารของฉันอีกครั้ง");
+              ssbAlert("ข้อมูลเอกสารไม่ครบ กรุณากลับไปเปิดจากหน้าเอกสารของฉันอีกครั้ง");
               return;
             }
         
@@ -374,9 +375,9 @@
               body: JSON.stringify(payload)
             })
             .then(response => response.json())
-            .then(result => {
+            .then(async result => {
               if (result.status === "success") {
-                alert("บันทึกการตั้งค่าเรียบร้อยแล้วค่ะ");
+                await ssbAlert("✅ บันทึกการตั้งค่าเรียบร้อยแล้วค่ะ");
         
                 if (liff.isInClient()) {
                   liff.closeWindow();
@@ -387,7 +388,7 @@
             })
             .catch(error => {
               console.error("Error:", error);
-              alert("เกิดข้อผิดพลาดในการบันทึก กรุณาลองใหม่อีกครั้ง");
+              ssbAlert("เกิดข้อผิดพลาดในการบันทึก กรุณาลองใหม่อีกครั้ง");
         
               btn.innerText = originalText;
               btn.disabled = false;
